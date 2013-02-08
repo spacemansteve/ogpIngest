@@ -83,32 +83,40 @@ Use this page to ingest FGDC metadata files into GeoServer (Local layers only) a
 			<br/>
 			<br/>
 			<br/>
-			<label for="file"><h4>Select XML metadata file(s) or zipped directory of XML metadata files</h4></label>
-			 <!-- The fileupload-buttonbar contains buttons to add/delete files and start/cancel the upload -->
-        <div class="row fileupload-buttonbar">
-            <div class="span4">
-                <!-- The fileinput-button span is used to style the file input field as button -->
-                <span class="btn btn-success fileinput-button">
-                    <i class="icon-plus icon-white"></i>
-                    <span>Add files...</span>
-                    <input type="file" id="file" name="fgdcFile[]" multiple>
-                </span>
-                <button type="submit" id="submitButton" class="btn btn-primary start">
-                    <i class="icon-upload icon-white"></i>
-                    <span>Start ingest</span>
-                </button>
-            </div>
-            <!-- The global progress information -->
-            <div class="span4 fileupload-progress fade">
-                <!-- The global progress bar -->
-                <div class="progress progress-success progress-striped active" role="progressbar" aria-valuemin="0" aria-valuemax="100">
-                    <div class="bar" style="width:0%;"></div>
-                </div>
-                <!-- The extended global progress information -->
-                <!-- <div class="progress-extended">&nbsp;</div>-->
-            </div>
-        </div>
-        <!-- The loading indicator is shown during file processing -->
+			
+			 
+			<labelfor"url"><h4>Specify a URL to crawl:</h4> (for example, http://cod.humanitarianresponse.info/)</label>
+            <input type="text" id="url" name="url" style='width:30em' />
+            <!-- The fileupload-buttonbar contains buttons to add/delete files and start/cancel the upload -->
+			<div class="row fileupload-buttonbar">
+				<label for="file"><h4>Or, add XML metadata file(s) or
+						zipped directory of XML metadata files</h4></label>
+				<div class="span4">
+					<!-- The fileinput-button span is used to style the file input field as button -->
+					<span class="btn btn-success fileinput-button"> <i
+						class="icon-plus icon-white"></i> <span>Add files...</span> <input
+						type="file" id="file" name="fgdcFile[]" multiple>
+					</span> <br />
+					<button type="submit" id="submitButton"
+						class="btn btn-primary start">
+						<i class="icon-upload icon-white"></i> <span>Start ingest</span>
+					</button>
+				</div>
+				<br />
+
+
+				<!-- The global progress information -->
+				<div class="span4 fileupload-progress fade">
+					<!-- The global progress bar -->
+					<div class="progress progress-success progress-striped active"
+						role="progressbar" aria-valuemin="0" aria-valuemax="100">
+						<div class="bar" style="width: 0%;"></div>
+					</div>
+					<!-- The extended global progress information -->
+					<!-- <div class="progress-extended">&nbsp;</div>-->
+				</div>
+			</div>
+			<!-- The loading indicator is shown during file processing -->
         <div class="fileupload-loading"></div>
         <br>
         <!-- The table listing the files available for upload/download -->

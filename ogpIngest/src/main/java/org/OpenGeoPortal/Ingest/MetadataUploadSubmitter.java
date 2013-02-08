@@ -10,6 +10,6 @@ import org.OpenGeoPortal.Ingest.AbstractSolrIngest.MetadataElement;
 public interface MetadataUploadSubmitter {
 
 	UUID runIngestJob(String sessionId, String institution, Set<MetadataElement> requiredFields, String options,
-			List<File> uploadedFiles);
+			List<File> uploadedFiles, String url);
 
 }

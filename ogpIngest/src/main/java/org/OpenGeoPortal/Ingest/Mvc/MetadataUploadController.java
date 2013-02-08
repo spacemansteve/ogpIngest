@@ -62,7 +62,9 @@ public class MetadataUploadController {
 
 	@RequestMapping(method=RequestMethod.POST, produces="application/json")
 	public @ResponseBody JobIdResponse processUpload(@RequestParam("institution") String institution, @RequestParam("ingestOption") String options, 
-				@RequestParam("requiredFields") String[] requiredFields, @RequestParam("fgdcFile[]") MultipartFile[] fgdcFile, Model model) throws IOException {
+				@RequestParam("requiredFields") String[] requiredFields,
+				@RequestParam("url") String url,
+				@RequestParam("fgdcFile[]") MultipartFile[] fgdcFile, Model model) throws IOException {
 		List<File> uploadedFiles = new ArrayList<File>();
 		JobIdResponse jobIdResponse = new JobIdResponse();
 		File tempDir = FileUtils.createTempDir();
@@ -98,7 +100,8 @@ public class MetadataUploadController {
 		}
 		String sessionId = RequestContextHolder.currentRequestAttributes().getSessionId();
 
-		UUID jobId = metadataUploadSubmitter.runIngestJob(sessionId, institution, getRequiredElements(requiredFields), options, uploadedFiles);
+		UUID jobId 
+			= metadataUploadSubmitter.runIngestJob(sessionId, institution, getRequiredElements(requiredFields), options, uploadedFiles, url);
 		
 		jobIdResponse.setJobId(jobId.toString());
 		logger.info("JobId: " + jobId.toString());

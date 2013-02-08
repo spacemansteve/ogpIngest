@@ -93,6 +93,15 @@
   	<property name="extraTasks" ref="extraTasks"/>
   	<property name="ingestProperties" ref="ingestProperties.propFile"/>
   </bean>
+  <bean id="crawlMetadataJob" class="org.OpenGeoPortal.Ingest.CrawlMetadataJob" scope="prototype">
+  	<property name="ingestStatusManager" ref="ingestStatusManager"/>
+  	<property name="metadataConverter" ref="metadataConverter.flexible"/>
+  	<property name="mapServerIngest" ref="geoserverIngest"/>
+  	<property name="solrIngest" ref="solrIngest.ows"/>
+  	<property name="extraTasks" ref="extraTasks"/>
+  	<property name="ingestProperties" ref="ingestProperties.propFile"/>
+  </bean>
+
   <bean id="remoteSolrIngestJob" class="org.OpenGeoPortal.Ingest.BasicRemoteSolrIngestJob" scope="prototype">
   	<property name="ingestStatusManager" ref="ingestStatusManager"/>
   	<property name="solrClient" ref="solrClient.solrJ"/>

@@ -13,6 +13,9 @@
 	    <security:intercept-url pattern="/login*" access="permitAll"/>  
     	<!--<security:intercept-url pattern="/solrDelete" access="hasRole('ROLE_ADMIN')"/>-->
     	<security:form-login login-page="/login" default-target-url="/metadataUpload" authentication-failure-url="/loginfailed" />
+
+	<!-- for localhost operations use requires-channel="http" or an ssl cert
+	     othewise, use requires-channel="https" -->
     	<security:intercept-url pattern="/**" access="hasRole('ROLE_ADMIN')" requires-channel="https"/>
 		<security:logout/>
 	</security:http>
