@@ -44,7 +44,7 @@ public class BasicUploadMetadataJob extends AbstractMetadataJob implements Uploa
 			//decide what to do with the file(s)
 			fileCounter++;
 			ingestStatus.setProgress(fileCounter, totalFileCount);
-			processFile(file, totalFileCount);
+			processFile(file, totalFileCount, null);
 		}
 		if (ingestStatus.getErrors().isEmpty()){
 			ingestStatus.setJobStatus(IngestJobStatus.Succeeded);

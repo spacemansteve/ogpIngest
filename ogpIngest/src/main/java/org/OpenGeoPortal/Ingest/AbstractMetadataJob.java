@@ -33,7 +33,7 @@ public abstract class AbstractMetadataJob {
 	private MapServerIngest mapServerIngest;
 	private SolrIngest solrIngest;
 	private ExtraTasks extraTasks;
-	private IngestProperties ingestProperties;
+	protected IngestProperties ingestProperties;
 	protected String institution;
 	protected String options;
 	protected String url;  // url to crawl
@@ -101,7 +101,7 @@ public abstract class AbstractMetadataJob {
 		this.ingestProperties = ingestProperties;
 	}
 
-	protected String ingestXmlMetadata(InputStream fileInputStream, String institution, String options)
+	protected String ingestXmlMetadata(InputStream fileInputStream, String institution, String options, Object auxInfo)
 			throws Exception {
 				logger.info("Trying to parse metadata...");
 				MetadataParseResponse metadataParseResponse = null;
@@ -113,6 +113,7 @@ public abstract class AbstractMetadataJob {
 				logger.info("Metadata Parsed...");
 			
 				Metadata metadata = metadataParseResponse.metadata;
+				adjustMetadata(metadata, auxInfo);
 				if (!metadataParseResponse.ingestErrors.isEmpty()){
 					for (IngestInfo errorObj: metadataParseResponse.ingestErrors){
 						ingestStatus.addError(metadata.getOwsName(), "Parse Error: " + errorObj.getField() + "&lt;" + errorObj.getNativeName() + "&gt;:" + errorObj.getError() + "-" + errorObj.getMessage());
@@ -189,12 +190,26 @@ public abstract class AbstractMetadataJob {
 				} else return "";
 			}
 	
+	/**
+	 * obtain metadata from crawl or uploading files, etc.
+	 * @throws IOException
+	 */
 	public abstract void getMetadata() throws IOException;
 	
 	/**
-	 * called after all data has been ingested typically used to delete temp files
+	 * called after all data has been ingested, typically used to delete temp files
 	 */
 	public void cleanUp()
+	{
+		
+	}
+	
+	/**
+	 * subclasses can be use this to post-process metadata
+	 * after it has been parsed but before it is ingested 
+	 * @param metadata
+	 */
+	public void adjustMetadata(Metadata metadata, Object auxInfo)
 	{
 		
 	}
@@ -203,8 +218,9 @@ public abstract class AbstractMetadataJob {
 	 * process passed file based on file name extension
 	 * this function will handle xml and zip files
 	 * @param file
+	 * @param auxInfo TODO
 	 */
-	protected int processFile(File file, int totalFileCount)
+	protected int processFile(File file, int totalFileCount, Object auxInfo)
 	{
 		String fileName;
 		synchronized (this)
@@ -215,11 +231,11 @@ public abstract class AbstractMetadataJob {
 		{
 			//treat as xml metadata
 			int errorCount = ingestStatus.getErrors().size();
-			processMetadataFile(file);
+			processMetadataFile(file, auxInfo);
 		} 
 		else if (fileName.toLowerCase().endsWith(".zip"))
 		{
-			int zipFileCount = processZipFile(file, totalFileCount) - 1; 
+			int zipFileCount = processZipFile(file, totalFileCount, auxInfo) - 1; 
 			totalFileCount += zipFileCount;
 		} else 
 		{
@@ -227,12 +243,15 @@ public abstract class AbstractMetadataJob {
 		}	
 		return 1;
 	}
+	
+	
 	/**
 	 * called with an individual xml file to ingest
 	 * it could have been uploaded, uploaded in a zip or found via a crawl
 	 * @param xmlFile
+	 * @param auxInfo TODO
 	 */
-	protected int processMetadataFile(File xmlFile)
+	protected int processMetadataFile(File xmlFile, Object auxInfo)
 	{
 		try
 		{
@@ -241,7 +260,7 @@ public abstract class AbstractMetadataJob {
 			synchronized(this)
 			{
 				fileName = xmlFile.getName();
-				ingestXmlMetadata(new FileInputStream(xmlFile), institution, options);
+				ingestXmlMetadata(new FileInputStream(xmlFile), institution, options, auxInfo);
 			}
 			if (ingestStatus.getErrors().size() == errorCount)
 				ingestStatus.addSuccess(xmlFile.getName(), "added");
@@ -270,8 +289,9 @@ public abstract class AbstractMetadataJob {
 	 * process zip file potentially containing metadata 
 	 * returns the number of files processed
 	 * @param file
+	 * @param auxInfo TODO
 	 */
-	protected int processZipFile(File file, int totalFileCount)
+	protected int processZipFile(File file, int totalFileCount, Object auxInfo)
 	{
 		//first unzip the contents
 		Set<File> xmlFiles = new HashSet<File>();
@@ -293,12 +313,12 @@ public abstract class AbstractMetadataJob {
 				xmlCounter++;
 				logger.debug("Processing layer " + xmlCounter + " out of " + totalFileCount);
 				ingestStatus.setProgress(xmlCounter, totalFileCount);
-				processMetadataFile(xmlFile);
+				processMetadataFile(xmlFile, auxInfo);
 			} 
 			else 
 			{
-					logger.info("Ignoring file: " + xmlFile.getName());
-					//errorMessage.add(statusMessage(xmlFile.getName(), "Filetype is unsupported."));
+				logger.info("Ignoring file: " + xmlFile.getName());
+				//errorMessage.add(statusMessage(xmlFile.getName(), "Filetype is unsupported."));
 			}
 		}
 			

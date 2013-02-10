@@ -2,12 +2,17 @@ package org.OpenGeoPortal.Ingest;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 
+import org.OpenGeoPortal.Layer.Metadata;
+import org.OpenGeoPortal.Layer.PlaceKeywords;
 import org.OpenGeoPortal.Utilities.FileUtils;
 
 import edu.uci.ics.crawler4j.crawler.CrawlConfig;
 import edu.uci.ics.crawler4j.crawler.CrawlController;
+import edu.uci.ics.crawler4j.crawler.Page;
 import edu.uci.ics.crawler4j.fetcher.PageFetcher;
+import edu.uci.ics.crawler4j.parser.HtmlParseData;
 import edu.uci.ics.crawler4j.robotstxt.RobotstxtConfig;
 import edu.uci.ics.crawler4j.robotstxt.RobotstxtServer;
 
@@ -63,5 +68,58 @@ public class CrawlMetadataJob extends AbstractMetadataJob implements UploadMetad
         controller.start(CrawlPageHandler.class, numberOfCrawlers);
         
 	}
+	
+	/**
+	 * apply information from the page to update the passed metadata
+	 * much of the processing below is very specific to the UN site at http://cod.humanitarianresponse.info
+	 *   and is not generally applicable
+	 * the limitation with the approach here is we don't know which element 
+	 *   in the page is associated with the passed metadata object
+	 *   so we can only scrape the page for values that apply to 
+	 *   all the elements on it
+	 * for the un site, this means I'm not crawling the date or the data type
+	 * rather then passing page page, this function should be passed a second
+	 *   metadata object that was created when the link was found
+	 */
+	public void adjustMetadata(Metadata metadata, Object auxInfo)
+	{
+		String adjustMetadata = "";
+		try
+		{adjustMetadata = ingestProperties.getProperty("crawlMetadataJob.adjustMetadata");}
+		catch (IOException e){logger.error("could not get ingestProperty crawlMetadataJob.adjustMetadata");return;}
+		if ("false".equalsIgnoreCase(adjustMetadata)) return;
+		
+		logger.info("in CrawlMetaDAtaJob.adjustMetadata, adjustMetadata = " + adjustMetadata 
+					+ ", auxInfo = " + auxInfo);
+		Page currentPage = (Page)auxInfo;
+    	HtmlParseData htmlParseData = (HtmlParseData) currentPage.getParseData();
+    	// we assume the pageTitle is something like Afghanistan  | COD-FOD Registry
+    	String pagePlaceName = htmlParseData.getTitle();
+    	if (pagePlaceName != null)
+    	{
+    		if (pagePlaceName.contains("|"))
+    		{
+    			String[] parts = pagePlaceName.split("\\|");
+    			if (parts.length > 0)
+    				pagePlaceName = parts[0].trim();
+    		}
+    	}
+    	String layerTitle = metadata.getTitle();
+    	logger.info("  adjusting with placename " + pagePlaceName);
+    	if (layerTitle.contains(pagePlaceName) == false)
+    	{
+    		// here if the layer title lacks the placename from the page title
+    		metadata.setTitle(pagePlaceName + " " + layerTitle);
+    	}
+    	// add page place name to place keywords
+    	// is this right?  
+    	List<PlaceKeywords> placeKeywordsList = metadata.getPlaceKeywords();
+    	PlaceKeywords pagePlaceNameKeyword = new PlaceKeywords();
+    	pagePlaceNameKeyword.addKeyword(pagePlaceName);
+    	placeKeywordsList.add(pagePlaceNameKeyword);
+
+    	
+	}
+
 
 }

@@ -45,9 +45,9 @@ public class CrawlPageHandler extends WebCrawler
 	}
 	
 	 /**                                                                                                                      
-     * called when a page on a site we're crawling
+     * called with a page on a site we're crawling
      * get all the links on the page, for links to zip and xml files
-     *   create a local copy of the file and process
+     *   create a local copy of the file and process it
      */
     @Override
     public void visit(Page page)
@@ -90,7 +90,9 @@ public class CrawlPageHandler extends WebCrawler
         				
 						org.apache.commons.io.FileUtils.copyURLToFile(linkUrl, localTempFile);
         				logger.info("processing file " + localTempFile.toString());
-						crawlMetadataJob.processFile(localTempFile, 1);
+        				// rather then passing the page, we probably need to parse data on the page
+        				//   near the current link, build a Metadata object, and pass that 
+						crawlMetadataJob.processFile(localTempFile, 1, page);
 					} 
                     catch (IOException e) 
 					{
