@@ -103,11 +103,13 @@ public abstract class AbstractMetadataJob {
 
 	protected String ingestXmlMetadata(InputStream fileInputStream, String institution, String options, Object auxInfo)
 			throws Exception {
-				logger.info("Trying to parse metadata...");
+				logger.info("Trying to parse metadata with stream = " + fileInputStream + ", " + institution);
 				MetadataParseResponse metadataParseResponse = null;
 				try {
 						metadataParseResponse = metadataConverter.parse(fileInputStream, institution);
 				} catch (Exception e){
+					logger.info("!exception = " + e.getMessage());
+					logger.info("  " + e.getCause());
 					throw new Exception(e.getMessage());
 				}
 				logger.info("Metadata Parsed...");

@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
+import org.OpenGeoPortal.Layer.GeometryType;
 import org.OpenGeoPortal.Layer.Metadata;
 import org.OpenGeoPortal.Layer.PlaceKeywords;
 import org.OpenGeoPortal.Utilities.FileUtils;
@@ -73,15 +74,87 @@ public class CrawlMetadataJob extends AbstractMetadataJob implements UploadMetad
 	 * apply information from the page to update the passed metadata
 	 * much of the processing below is very specific to the UN site at http://cod.humanitarianresponse.info
 	 *   and is not generally applicable
-	 * the limitation with the approach here is we don't know which element 
-	 *   in the page is associated with the passed metadata object
-	 *   so we can only scrape the page for values that apply to 
-	 *   all the elements on it
-	 * for the un site, this means I'm not crawling the date or the data type
-	 * rather then passing page page, this function should be passed a second
-	 *   metadata object that was created when the link was found
+	 * use the passed Metadata object obtained from scraping the page to augment 
+	 *   the metadata parsed from the xml file
 	 */
 	public void adjustMetadata(Metadata metadata, Object auxInfo)
+	{
+		if (auxInfo == null)
+			return;
+		logger.info(" institution was " + metadata.getInstitution());
+		metadata.setInstitution("UNCrawl");
+		String adjustMetadata = "";
+		try
+		{adjustMetadata = ingestProperties.getProperty("crawlMetadataJob.adjustMetadata");}
+		catch (IOException e){logger.error("could not get ingestProperty crawlMetadataJob.adjustMetadata");return;}
+		if ("false".equalsIgnoreCase(adjustMetadata)) return;
+		
+		logger.info("in CrawlMetaDataJob.adjustMetadata, adjustMetadata = " + adjustMetadata 
+					+ ", auxInfo = " + auxInfo);
+		Metadata auxMetadata = (Metadata)auxInfo;
+		String auxTitle = auxMetadata.getTitle();
+
+    	String layerTitle = metadata.getTitle();
+    	logger.info("  adjusting with placename " + auxTitle);
+    	if (layerTitle.contains(auxTitle) == false)
+    	{
+    		// here if the layer title lacks the placename from the page title
+    		layerTitle = auxTitle + " " + layerTitle;
+    		metadata.setTitle(layerTitle);
+    	}
+    	String auxContentDate = auxMetadata.getContentDate();
+    	if (auxContentDate != null)
+    	{
+    		if (layerTitle.contains(auxContentDate) == false)
+    		{
+    			layerTitle += " " + auxContentDate;
+    			metadata.setTitle(layerTitle);
+    		}
+    	}
+    	logger.info("CrawlMetadataJob.adjustMetadata, adjusted title = " + layerTitle);
+    	
+    	// add page place name to place keywords
+    	List<PlaceKeywords> placeKeywordsList = metadata.getPlaceKeywords();
+    	PlaceKeywords pagePlaceNameKeyword = new PlaceKeywords();
+    	pagePlaceNameKeyword.addKeyword(auxTitle);
+    	placeKeywordsList.add(pagePlaceNameKeyword);
+
+    	String contentDate = metadata.getContentDate();
+    	if ((contentDate == null) || (contentDate == ""))
+    	{
+    		if (auxContentDate != null)
+    		{
+    			metadata.setContentDate(auxContentDate);
+    			logger.info("  adjusted content data = " + auxContentDate);
+    		}
+    	}
+    	
+    	String description = metadata.getDescription();
+    	String auxDescription = auxMetadata.getDescription();
+    	if ((description == null) || (description == ""))
+    	{
+    		if (auxDescription != null)
+    		{
+    			metadata.setDescription(auxDescription);
+    			logger.info("  adjusted description = " + auxDescription);
+    		}
+    	}
+    	
+    	GeometryType geometry = metadata.getGeometryType();
+    	GeometryType auxGeometry = auxMetadata.getGeometryType();
+    	if ((geometry == null) || (geometry == GeometryType.Undefined))
+    	{
+    		if (auxGeometry != null)
+    		{
+    			metadata.setGeometryType(auxGeometry);
+    			logger.info("  adjusted geometry = " + auxGeometry);
+    		}
+    	}
+    			
+	}
+	
+	
+	public void adjustMetadataOld(Metadata metadata, Object auxInfo)
 	{
 		String adjustMetadata = "";
 		try
@@ -116,10 +189,7 @@ public class CrawlMetadataJob extends AbstractMetadataJob implements UploadMetad
     	List<PlaceKeywords> placeKeywordsList = metadata.getPlaceKeywords();
     	PlaceKeywords pagePlaceNameKeyword = new PlaceKeywords();
     	pagePlaceNameKeyword.addKeyword(pagePlaceName);
-    	placeKeywordsList.add(pagePlaceNameKeyword);
-
-    	
+    	placeKeywordsList.add(pagePlaceNameKeyword); 	
 	}
-
 
 }
