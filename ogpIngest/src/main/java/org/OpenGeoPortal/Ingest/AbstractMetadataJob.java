@@ -167,30 +167,43 @@ public abstract class AbstractMetadataJob {
 				}
 			
 				if (doSolrIngest) {
-					logger.info("Trying Solr ingest...[" + metadata.getOwsName() + "]");	
-					// and ingest into solr
-					SolrIngestResponse solrIngestResponse = null;
-					try {				
-						solrIngestResponse = solrIngest.writeToSolr(metadata, this.requiredFields);
-					} catch (Exception e){ 
-						ingestStatus.addError(metadata.getOwsName(), "Solr Error: " + e.getMessage());
-					}
-					if (!solrIngestResponse.ingestErrors.isEmpty()){
-						for (IngestInfo errorObj: solrIngestResponse.ingestErrors){
-							ingestStatus.addError(metadata.getOwsName(), "Solr Ingest Error: " + errorObj.getField() + "&lt;" + errorObj.getNativeName() + "&gt;:" + errorObj.getError() + "-" + errorObj.getMessage());
-						}
-						logger.error("Solr Ingest Errors:" + solrIngestResponse.ingestErrors.size());
-					}
-					if (!solrIngestResponse.ingestWarnings.isEmpty()){
-						for (IngestInfo errorObj: solrIngestResponse.ingestWarnings){
-							ingestStatus.addWarning(metadata.getOwsName(), "Solr Ingest Warnings: " + errorObj.getField() + "&lt;" + errorObj.getNativeName() + "&gt;:" + errorObj.getError() + "-" + errorObj.getMessage());
-						}
-						logger.warn("Solr Ingest Warnings:" + solrIngestResponse.ingestWarnings.size());
-					}
 					
+					SolrIngestResponse solrIngestResponse = solrIngestMetadata(metadata);
+					// could this instead return metadata.getId()? 
 					return solrIngestResponse.solrRecord.getLayerId();
 				} else return "";
 			}
+	
+	/**
+	 * ingest the passed metadata into the Solr instance
+	 * @param metadata
+	 * @param solrIngestResponse
+	 */
+	protected SolrIngestResponse solrIngestMetadata(Metadata metadata)
+	{
+		logger.info("Trying Solr ingest...[" + metadata.getOwsName() + "]");	
+		SolrIngestResponse solrIngestResponse = null;
+		try {				
+			solrIngestResponse = solrIngest.writeToSolr(metadata, this.requiredFields);
+		} catch (Exception e){ 
+			ingestStatus.addError(metadata.getOwsName(), "Solr Error: " + e.getMessage());
+			logger.info("Solr ingest exception: " + e.toString());
+		}
+		if (!solrIngestResponse.ingestErrors.isEmpty()){
+			for (IngestInfo errorObj: solrIngestResponse.ingestErrors){
+				ingestStatus.addError(metadata.getOwsName(), "Solr Ingest Error: " + errorObj.getField() + "&lt;" + errorObj.getNativeName() + "&gt;:" + errorObj.getError() + "-" + errorObj.getMessage());
+				logger.info("Solr ingest error: " + errorObj.getField() + "&lt;" + errorObj.getNativeName() + "&gt;:" + errorObj.getError() + "-" + errorObj.getMessage());
+			}
+			logger.error("Solr Ingest Errors:" + solrIngestResponse.ingestErrors.size());
+		}
+		if (!solrIngestResponse.ingestWarnings.isEmpty()){
+			for (IngestInfo errorObj: solrIngestResponse.ingestWarnings){
+				ingestStatus.addWarning(metadata.getOwsName(), "Solr Ingest Warnings: " + errorObj.getField() + "&lt;" + errorObj.getNativeName() + "&gt;:" + errorObj.getError() + "-" + errorObj.getMessage());
+			}
+			logger.warn("Solr Ingest Warnings:" + solrIngestResponse.ingestWarnings.size());
+		}
+		return solrIngestResponse;			
+	}
 	
 	/**
 	 * obtain metadata from crawl or uploading files, etc.
@@ -322,6 +335,7 @@ public abstract class AbstractMetadataJob {
 				logger.info("Ignoring file: " + xmlFile.getName());
 				//errorMessage.add(statusMessage(xmlFile.getName(), "Filetype is unsupported."));
 			}
+			xmlFile.delete();
 		}
 			
 		if (xmlCounter == 0)
