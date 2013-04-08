@@ -39,6 +39,7 @@ public class CrawlMetadataJob extends AbstractMetadataJob implements UploadMetad
         config.setPolitenessDelay(500);
         config.setMaxDepthOfCrawling(40);
         config.setMaxPagesToFetch(-1);
+
         // should the user agent include Tufts/the institution's name?
         // how is it available?  hack
         config.setUserAgentString("OpenGeoPortal/beta (Tufts, http://www.OpenGeoPortal.com)");

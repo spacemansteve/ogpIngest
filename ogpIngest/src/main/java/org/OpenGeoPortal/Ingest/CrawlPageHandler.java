@@ -44,6 +44,11 @@ public class CrawlPageHandler extends WebCrawler
 	{
 		CrawlMetadataJob crawlMetadataJob = (CrawlMetadataJob)this.getMyController().getCustomData();
 		String href = url.getURL().toLowerCase();
+		if (href.endsWith(".img") || href.endsWith(".lbl"))
+		{
+			logger.debug("shouldVisit not url " + href + ", because it is not a web page");
+			return false;
+		}
 		if (href.startsWith(crawlMetadataJob.url))
 		{
 			logger.debug("shouldVisit url " + href + ", based on " + crawlMetadataJob.url);
@@ -79,18 +84,25 @@ public class CrawlPageHandler extends WebCrawler
 
         if (page.getParseData() instanceof HtmlParseData)
         {
+        	logger.info("  html page found");
+        	
         	Document doc;
         	try
         	{
         		doc = Jsoup.connect(pageUrl$).get();
+        		logger.info("  parsed page with Jsoup");
         	}
         	catch (IOException e)
         	{
         		logger.error("in CrawlPageHandler.visit, could not parse html: " + e.getMessage());
         		return;
         	}
-            //processLinks(doc, pageUrl$, crawlMetadataJob);
-            processPageAsResource(doc, pageUrl$, crawlMetadataJob);
+            processLinks(doc, pageUrl$, crawlMetadataJob);
+            //processPageAsResource(doc, pageUrl$, crawlMetadataJob);
+        }
+        else
+        {
+        	logger.info("  skipping non-html page");
         }
     }
     
@@ -298,8 +310,11 @@ public class CrawlPageHandler extends WebCrawler
 			catch (MalformedURLException e1) {logger.error("inCrawlPageHandler.visit, couldn't parse "  + link$);return;}
 	        
     		link$ = link$.toLowerCase();
-    		if (link$.endsWith(".zip") || (link$.endsWith(".xml")))
+    		logger.info("current link = " + link$);
+    		if (link$.endsWith(".zip") || (link$.endsWith(".xml") || (link$.endsWith(".lbl") || link$.endsWith(".img"))))
     		{
+    			if (link$.contains("gazetter"))
+    				continue;
     			// process any zip or xml file, even when link points to another site        			
     			String urlPath = linkUrl.getPath();
     			//urlPath = link.getPath();
@@ -318,8 +333,9 @@ public class CrawlPageHandler extends WebCrawler
 					org.apache.commons.io.FileUtils.copyURLToFile(linkUrl, localTempFile);
     				logger.info("processing file " + localTempFile.toString());
     				// rather then passing the page, we probably need to parse data on the page
-    				//   near the current link, build a Metadata object, and pass that 
-	        		Metadata pageMetadata = getPageMetadata(doc, link);
+    				//   near the current link, build a Metadata object, and pass that
+    				// hack, when should we look for page metadata?
+	        		Metadata pageMetadata = null; //getPageMetadata(doc, link);
 					crawlMetadataJob.processFile(localTempFile, 1, pageMetadata);
 					localTempFile.delete();  // after ingest, delete file
 				} 
