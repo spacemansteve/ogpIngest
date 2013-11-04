@@ -64,6 +64,13 @@ public class SolrRecord {
 	String contentDate;
 	@Field("FgdcText")
 	String fgdcText;
+	@Field("ShpFileHash")
+	String shpFileHash;
+	@Field("ZipFileHash")
+	String zipFileHash;
+	@Field("SizeInBytes")
+	String sizeInBytes;
+
 	public String getLayerId() {
 		return layerId;
 	}
@@ -239,6 +246,31 @@ public class SolrRecord {
 		this.fgdcText = fgdcText;
 	}
 	
+	public String getZipFileHash()
+	{
+		return zipFileHash;
+	}
+	public void setZipFileHash(String hash)
+	{
+		zipFileHash = hash;
+	}
+	public String getShpFileHash()
+	{
+		return shpFileHash;
+	}
+	public void setShpFileHash(String hash)
+	{
+		shpFileHash = hash;
+	}
+	public String getSizeInBytes()
+	{
+		return sizeInBytes;
+	}
+	public void setSizeInBytes(String size)
+	{
+		sizeInBytes = size;
+	}
+	
 	public Map<String,String> toMap(){
 		Map<String,String> map = new HashMap<String,String>();
 		map.put("LayerId", this.layerId);
@@ -250,6 +282,9 @@ public class SolrRecord {
 		map.put("Bounds", this.minX + "," + this.minY + "," + this.maxX + "," + this.maxY);
 		map.put("Originator", this.originator);
 		map.put("Publisher", this.publisher);
+		map.put("ZipFileHash", this.zipFileHash);
+		map.put("ShpFileHash", this.shpFileHash);
+		map.put("SizeInBytes", this.sizeInBytes);
 		return map;
 	}
 	public String toString(){

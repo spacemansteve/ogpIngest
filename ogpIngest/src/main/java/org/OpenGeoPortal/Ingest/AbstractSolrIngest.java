@@ -45,7 +45,9 @@ public abstract class AbstractSolrIngest implements SolrIngest
 			FullText,
 			DataType,
 			Georeferenced,
-			ContentDate
+			ContentDate,
+			ZipFileHash,
+			ShpFileHash
 		}
 		
 		Set<MetadataElement> requiredElementsSet = new HashSet<MetadataElement>();
@@ -74,6 +76,7 @@ public abstract class AbstractSolrIngest implements SolrIngest
 		}
 		
 		public SolrIngestResponse writeToSolr(Metadata metadata) throws Exception {
+			logger.info ("  in AbstractSolrIngest.writeToSolr, location = " + metadata.getLocation());
 			Set<MetadataElement> requiredElements = new HashSet<MetadataElement>();
 			requiredElements.add(MetadataElement.LayerId);
 			requiredElements.add(MetadataElement.LayerName);
@@ -84,8 +87,10 @@ public abstract class AbstractSolrIngest implements SolrIngest
 		
 		public SolrIngestResponse writeToSolr(Metadata metadata, Set<MetadataElement> requiredElements) throws Exception {
 			setRequiredElements(requiredElements);
+			logger.info ("  .in AbstractSolrIngest.writeToSolr, location = " + metadata.getLocation());
 			setMetadata(metadata);
-		
+			logger.info ("  ..in AbstractSolrIngest.writeToSolr, location = " + metadata.getLocation());
+			
 			solrIngestResponse = metadataToSolr();
 			logger.debug(solrIngestResponse.solrRecord.toString());
 			
@@ -106,6 +111,7 @@ public abstract class AbstractSolrIngest implements SolrIngest
 		}
 
 		SolrIngestResponse metadataToSolr() throws Exception {
+			logger.info("in metadataToSolr, location = " + metadata.getLocation());
 			solrIngestResponse = new SolrIngestResponse();
 			SolrRecord solrRecord = solrIngestResponse.solrRecord;
 			String institution = metadata.getInstitution();
@@ -125,6 +131,10 @@ public abstract class AbstractSolrIngest implements SolrIngest
 			} catch (Exception e){
 				solrIngestResponse.addError("Institution", "Institution", "Unspecified error setting value.", "");
 			}
+			
+			solrRecord.setZipFileHash(metadata.getZipFileHash());
+			solrRecord.setShpFileHash(metadata.getShpFileHash());
+			solrRecord.setSizeInBytes(String.valueOf(metadata.getSizeInBytes()));
 			
 			try{
 			if (processBounds()){
@@ -216,7 +226,10 @@ public abstract class AbstractSolrIngest implements SolrIngest
 				solrIngestResponse.addError("Georeferenced", "Georeferenced", "Unspecified error setting value.", "");
 			}
 			try{
-			solrRecord.setLocation(processLocation());
+			//solrRecord.setLocation(processLocation());
+			solrRecord.setLocation(metadata.getLocation());  //spmcd hack, why is processLocation returning "" instead of the real location				
+			logger.info(" .... in metadataToSolr, location = " + metadata.getLocation());
+			logger.info(" .... solr location = " + solrRecord.getLocation());
 			} catch (Exception e){
 				solrIngestResponse.addError("Location", "Location", "Unspecified error setting value.", "");
 			}		
@@ -599,7 +612,7 @@ public abstract class AbstractSolrIngest implements SolrIngest
 				this.solrIngestResponse.addError("Layer Name", "Name", "Layer Name must be specified.", "Layer Name must be specified.");
 			}
 			
-			String layerId = institution + "." + name;
+			String layerId = name; // sets layer id to the url    // institution + "." + name;
 			return layerId;
 		}
 

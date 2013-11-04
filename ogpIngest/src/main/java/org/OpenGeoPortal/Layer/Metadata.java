@@ -21,6 +21,10 @@ public class Metadata {
 	private String publisher;
 	private Boolean georeferenced;
 	private String contentDate;
+	
+	long sizeInBytes;
+	String shpFileHash;
+	String zipFileHash;
 		
 	public Metadata(String layerId){
 		setId(layerId);
@@ -157,5 +161,32 @@ public class Metadata {
 	
 	public void setContentDate(String contentDate){
 		this.contentDate = contentDate;
+	}
+	
+	public void setShpFileHash(String hash)
+	{
+		shpFileHash = hash;
+	}
+	public String getShpFileHash()
+	{
+		return shpFileHash;
+	}
+	
+	public void setZipFileHash(String hash)
+	{
+		zipFileHash = hash;
+	}
+	public String getZipFileHash()
+	{
+		return zipFileHash;
+	}
+	
+	public void setSizeInBytes(long size)
+	{
+		sizeInBytes = size;
+	}
+	public long getSizeInBytes()
+	{
+		return sizeInBytes;
 	}
 }

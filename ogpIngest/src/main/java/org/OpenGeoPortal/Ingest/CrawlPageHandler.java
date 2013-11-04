@@ -6,6 +6,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.text.Normalizer;
 import java.util.ArrayList;
+import java.util.Hashtable;
 import java.util.List;
 import java.util.Vector;
 
@@ -15,6 +16,7 @@ import org.OpenGeoPortal.Layer.Metadata;
 import org.OpenGeoPortal.Layer.PlaceKeywords;
 import org.OpenGeoPortal.Layer.ThemeKeywords;
 import org.OpenGeoPortal.Utilities.FileUtils;
+import org.apache.lucene.queryparser.classic.ParseException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -24,6 +26,11 @@ import edu.uci.ics.crawler4j.crawler.Page;
 import edu.uci.ics.crawler4j.crawler.WebCrawler;
 import edu.uci.ics.crawler4j.parser.HtmlParseData;
 import edu.uci.ics.crawler4j.url.WebURL;
+
+import com.berico.clavin.GeoParserFactory;
+import com.berico.clavin.GeoParser;
+import com.berico.clavin.resolver.ResolvedLocation;
+import com.berico.clavin.util.TextUtils;
 
 
 
@@ -90,7 +97,10 @@ public class CrawlPageHandler extends WebCrawler
         	try
         	{
         		doc = Jsoup.connect(pageUrl$).get();
-        		logger.info("  parsed page with Jsoup");
+        		String pageText = doc.text();
+        		logger.info("  parsed page with Jsoup: "); // + pageText);
+        		// clavin page text processing is useful for testing but not ready for prime time
+        		//processPageText(pageText);
         	}
         	catch (IOException e)
         	{
@@ -98,6 +108,8 @@ public class CrawlPageHandler extends WebCrawler
         		return;
         	}
             processLinks(doc, pageUrl$, crawlMetadataJob);
+            
+            // process as wikipedia page
             //processPageAsResource(doc, pageUrl$, crawlMetadataJob);
         }
         else
@@ -310,7 +322,14 @@ public class CrawlPageHandler extends WebCrawler
 			catch (MalformedURLException e1) {logger.error("inCrawlPageHandler.visit, couldn't parse "  + link$);return;}
 	        
     		link$ = link$.toLowerCase();
-    		logger.info("current link = " + link$);
+    		logger.info("!! current link = " + link$);
+    		if (hasUrlBeenProcessed(linkUrl))
+    		{	
+    			logger.info(" the link has already been processed");
+    			continue;  // only process each link one time
+    		}
+    		
+    		flagUrlAsProcessed(linkUrl);
     		if (link$.endsWith(".zip") || (link$.endsWith(".xml") || (link$.endsWith(".lbl") || link$.endsWith(".img"))))
     		{
     			if (link$.contains("gazetter"))
@@ -335,7 +354,7 @@ public class CrawlPageHandler extends WebCrawler
     				// rather then passing the page, we probably need to parse data on the page
     				//   near the current link, build a Metadata object, and pass that
     				// hack, when should we look for page metadata?
-	        		Metadata pageMetadata = null; //getPageMetadata(doc, link);
+	        		Metadata pageMetadata = getPageMetadata(doc, link);
 					crawlMetadataJob.processFile(localTempFile, 1, pageMetadata);
 					localTempFile.delete();  // after ingest, delete file
 				} 
@@ -349,6 +368,22 @@ public class CrawlPageHandler extends WebCrawler
     		}
     	}
     }
+    
+
+	// simple code to prevent revisiting of urls
+	static Hashtable<URL, Object> urlProcessed = new Hashtable<URL, Object>();
+	
+	protected static void flagUrlAsProcessed(URL url)
+	{
+		urlProcessed.put(url, true);
+	}
+	
+	protected static boolean hasUrlBeenProcessed(URL url)
+	{
+		if (urlProcessed.containsKey(url))
+			return true;
+		return false;
+	}
     
     /**
      * use jsoup for more sophisticated crawling then supported by crawler4j
@@ -402,6 +437,32 @@ public class CrawlPageHandler extends WebCrawler
     {
 		Metadata auxMetadata = new Metadata();
     	Elements columns = getColumns(link);
+    	String link$ = link.attr("abs:href");
+	    //{\"fileDownload\":\"http://library.mit.edu/item/foo.zip" + "\"}");
+
+    	auxMetadata.setLocation("{\"fileDownload\": [\"" + link$ + "\"]}");
+    	auxMetadata.setId(link$);
+    	System.out.println(" zip file location = " + auxMetadata.getLocation());
+    	String pageUrl$ = page.baseUri();
+    	try 
+    	{
+			URL pageUrl = new URL(pageUrl$);
+			String host = pageUrl.getHost();
+			auxMetadata.setInstitution(host.toLowerCase());
+			logger.info("auxMetadata institution set to " + host);
+		}
+    	catch (MalformedURLException e) 
+    	{
+    		logger.warn("could not parse institution url of " + pageUrl$);
+			e.printStackTrace();
+		}
+    	
+    	
+    	
+    	// the following only works on a UN humanitarian response site
+    	if (true == true)
+    		return auxMetadata;
+    	
 		logger.info(" rows size = " + columns.size());
 		if (columns.size() >= 6)
 		{
@@ -439,6 +500,48 @@ public class CrawlPageHandler extends WebCrawler
     		}
     	}
 		return auxMetadata;
+    }
+    
+    /**
+     * test code from WorkflowDemo
+     */
+    private void processPageText(String pageText)
+    {
+
+    	GeoParser parser;
+		try 
+		{
+			parser = GeoParserFactory.getDefault("/Users/stevemcdonald/Devel/github/clavin/CLAVIN/IndexDirectory");
+		
+			// Unstructured text file about Somalia to be geoparsed                         
+			//File inputFile = new File("/Users/stevemcdonald/Devel/github/clavin/CLAVIN/src/test/resources/sample-docs/Somalia-doc.txt");
+
+			// Grab the contents of the text file as a String                               
+			String inputString = pageText; //TextUtils.fileToString(inputFile);
+
+			// Parse location names in the text into geographic entities                    
+			List<ResolvedLocation> resolvedLocations = parser.parse(inputString);
+			
+			logger.info("resolved count = " + resolvedLocations.size());
+			// Display the ResolvedLocations found for the location names                   
+			for (ResolvedLocation resolvedLocation : resolvedLocations)
+				System.out.println(resolvedLocation);
+		}
+        catch (IOException e) 
+        {
+        	// TODO Auto-generated catch block
+        	e.printStackTrace();
+        } 
+		catch (ParseException e) 
+		{
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		catch (Exception e) 
+		{
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
     }
     
     

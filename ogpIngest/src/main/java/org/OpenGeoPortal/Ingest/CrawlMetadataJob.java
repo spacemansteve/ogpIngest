@@ -2,11 +2,13 @@ package org.OpenGeoPortal.Ingest;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.OpenGeoPortal.Layer.GeometryType;
 import org.OpenGeoPortal.Layer.Metadata;
 import org.OpenGeoPortal.Layer.PlaceKeywords;
+import org.OpenGeoPortal.Layer.ThemeKeywords;
 import org.OpenGeoPortal.Utilities.FileUtils;
 
 import edu.uci.ics.crawler4j.crawler.CrawlConfig;
@@ -42,7 +44,7 @@ public class CrawlMetadataJob extends AbstractMetadataJob implements UploadMetad
 
         // should the user agent include Tufts/the institution's name?
         // how is it available?  hack
-        config.setUserAgentString("OpenGeoPortal/beta (Tufts, http://www.OpenGeoPortal.com)");
+        config.setUserAgentString("OpenGeoPortal/beta (Tufts, http://www.OpenGeoPortal.org)");
 
         // Instantiate the controller for this crawl.                                                                        
         PageFetcher pageFetcher = new PageFetcher(config);
@@ -68,7 +70,8 @@ public class CrawlMetadataJob extends AbstractMetadataJob implements UploadMetad
         
          // Start the crawl. This is a blocking operation
         controller.start(CrawlPageHandler.class, numberOfCrawlers);
-        
+
+        ingestStatus.setJobStatus(IngestJobStatus.Finished);
 	}
 	
 	/**
@@ -80,78 +83,131 @@ public class CrawlMetadataJob extends AbstractMetadataJob implements UploadMetad
 	 */
 	public void adjustMetadata(Metadata metadata, Object auxInfo)
 	{
-		if (auxInfo == null)
-			return;
-		logger.info(" institution was " + metadata.getInstitution());
-		metadata.setInstitution("UNCrawl");
-		String adjustMetadata = "";
-		try
+		logger.info("in CrawlMetaDataJob.adjustMetadata with " + auxInfo);
+	    if (auxInfo == null)
+	    	return;
+	    Metadata auxMetadata = (Metadata)auxInfo;
+	    
+	    
+	    //if ((metadata.getInstitution() == null) || (metadata.getInstitution() == "")) ignore when crawling
+	    if ((auxMetadata.getInstitution() != null) && (auxMetadata.getInstitution() != ""))	
+	    	metadata.setInstitution(auxMetadata.getInstitution());
+	    logger.info(" institution set to  " + metadata.getInstitution() + ",  aux = " + auxMetadata.getInstitution());
+	    
+	    String adjustMetadata = "";
+	    try
 		{adjustMetadata = ingestProperties.getProperty("crawlMetadataJob.adjustMetadata");}
-		catch (IOException e){logger.error("could not get ingestProperty crawlMetadataJob.adjustMetadata");return;}
-		if ("false".equalsIgnoreCase(adjustMetadata)) return;
-		
-		logger.info("in CrawlMetaDataJob.adjustMetadata, adjustMetadata = " + adjustMetadata 
-					+ ", auxInfo = " + auxInfo);
-		Metadata auxMetadata = (Metadata)auxInfo;
-		String auxTitle = auxMetadata.getTitle();
+	    catch (IOException e){logger.error("could not get ingestProperty crawlMetadataJob.adjustMetadata");return;}
+	    if ("false".equalsIgnoreCase(adjustMetadata)) return;
+	    
+	    logger.info("in CrawlMetaDataJob.adjustMetadata, adjustMetadata = " + adjustMetadata 
+			+ ", auxInfo = " + auxInfo);
+	    
+	    metadata.setZipFileHash(auxMetadata.getZipFileHash());
+	    metadata.setShpFileHash(auxMetadata.getShpFileHash());
+	    metadata.setSizeInBytes(auxMetadata.getSizeInBytes());
+	    
+	    String auxTitle = auxMetadata.getTitle();
+	    //{\"fileDownload\":\"http://library.mit.edu/item/foo.zip" + "\"}");
+	    metadata.setLocation(auxMetadata.getLocation());
+	    logger.info(" set location to " + metadata.getLocation());
+	    String layerTitle = metadata.getTitle();
+	    logger.info("  adjusting with placename " + auxTitle);
+	    if (layerTitle == null)
+	    {	
+	    	if (auxTitle != null)
+	    	{
+	    		if (auxTitle != null)
+	    			metadata.setTitle(auxTitle);
+	    	}
+	    	else
+	    		metadata.setTitle("ingest didn't set title");
+	    }
+	    else
+	    {
+	    	if (layerTitle.contains(auxTitle) == false)
+	    	{
+	    		// here if the layer title lacks the placename from the page title
+	    		layerTitle = layerTitle + ": " + auxTitle;
+	    		metadata.setTitle(layerTitle);
+	    	}
+	    }
+	    layerTitle = metadata.getTitle();
+	    String auxContentDate = auxMetadata.getContentDate();
+	    if (auxContentDate != null)
+		{
+		    if (layerTitle.contains(auxContentDate) == false)
+			{
+			    layerTitle += " " + auxContentDate;
+			    metadata.setTitle(layerTitle);
+			}
+		}
+	    logger.info("CrawlMetadataJob.adjustMetadata, adjusted title = " + layerTitle);
+    	
+	    // add page place name to place keywords
+	    List<PlaceKeywords> placeKeywordsList = metadata.getPlaceKeywords();
+	    if (placeKeywordsList == null)
+	    {
+	    	placeKeywordsList = new ArrayList<PlaceKeywords>();
+			metadata.setPlaceKeywords(placeKeywordsList);
+	    }
+	    PlaceKeywords pagePlaceNameKeyword = new PlaceKeywords();
+	    if (auxTitle != null)
+	    	pagePlaceNameKeyword.addKeyword(auxTitle);
+	    placeKeywordsList.add(pagePlaceNameKeyword);
 
-    	String layerTitle = metadata.getTitle();
-    	logger.info("  adjusting with placename " + auxTitle);
-    	if (layerTitle.contains(auxTitle) == false)
-    	{
-    		// here if the layer title lacks the placename from the page title
-    		layerTitle = auxTitle + " " + layerTitle;
-    		metadata.setTitle(layerTitle);
-    	}
-    	String auxContentDate = auxMetadata.getContentDate();
-    	if (auxContentDate != null)
-    	{
-    		if (layerTitle.contains(auxContentDate) == false)
-    		{
-    			layerTitle += " " + auxContentDate;
-    			metadata.setTitle(layerTitle);
-    		}
-    	}
-    	logger.info("CrawlMetadataJob.adjustMetadata, adjusted title = " + layerTitle);
-    	
-    	// add page place name to place keywords
-    	List<PlaceKeywords> placeKeywordsList = metadata.getPlaceKeywords();
-    	PlaceKeywords pagePlaceNameKeyword = new PlaceKeywords();
-    	pagePlaceNameKeyword.addKeyword(auxTitle);
-    	placeKeywordsList.add(pagePlaceNameKeyword);
-
-    	String contentDate = metadata.getContentDate();
-    	if ((contentDate == null) || (contentDate == ""))
-    	{
-    		if (auxContentDate != null)
-    		{
-    			metadata.setContentDate(auxContentDate);
-    			logger.info("  adjusted content data = " + auxContentDate);
-    		}
-    	}
-    	
-    	String description = metadata.getDescription();
-    	String auxDescription = auxMetadata.getDescription();
-    	if ((description == null) || (description == ""))
-    	{
-    		if (auxDescription != null)
-    		{
-    			metadata.setDescription(auxDescription);
-    			logger.info("  adjusted description = " + auxDescription);
-    		}
-    	}
-    	
-    	GeometryType geometry = metadata.getGeometryType();
-    	GeometryType auxGeometry = auxMetadata.getGeometryType();
-    	if ((geometry == null) || (geometry == GeometryType.Undefined))
-    	{
-    		if (auxGeometry != null)
-    		{
-    			metadata.setGeometryType(auxGeometry);
-    			logger.info("  adjusted geometry = " + auxGeometry);
-    		}
-    	}
-    			
+	    if (metadata.getThemeKeywords() == null)
+	    {
+	    	List<ThemeKeywords> themeKeywordList = new ArrayList<ThemeKeywords>();
+	    	metadata.setThemeKeywords(themeKeywordList);
+	    }
+	    
+	    String contentDate = metadata.getContentDate();
+	    if ((contentDate == null) || (contentDate == ""))
+		{
+		    if (auxContentDate != null)
+			{
+			    metadata.setContentDate(auxContentDate);
+			    logger.info("  adjusted content data = " + auxContentDate);
+			}
+		}
+	    
+	    String description = metadata.getDescription();
+	    String auxDescription = auxMetadata.getDescription();
+	    if ((description == null) || (description == ""))
+		{
+		    if (auxDescription != null)
+			{
+			    metadata.setDescription(auxDescription);
+			    logger.info("  adjusted description = " + auxDescription);
+			}
+		}
+	    
+	    GeometryType geometry = metadata.getGeometryType();
+	    GeometryType auxGeometry = auxMetadata.getGeometryType();
+	    if ((geometry == null) || (geometry == GeometryType.Undefined))
+		{
+		    if (auxGeometry != null)
+			{
+			    metadata.setGeometryType(auxGeometry);
+			    logger.info("  adjusted geometry = " + auxGeometry);
+			}
+		}
+	    
+	    if ((metadata.getBounds() == null) && (auxMetadata.getBounds() != null))
+	    	metadata.setBounds(auxMetadata.getBounds());
+	    
+	    if ((metadata.getTitle() == null) && (auxMetadata.getTitle() != null))
+	    	metadata.setTitle(auxMetadata.getTitle());
+	    
+	    if ((metadata.getGeometryType() == null) && (auxMetadata.getGeometryType() != null))
+	    	metadata.setGeometryType(auxMetadata.getGeometryType());
+	    
+	    if ((metadata.getOwsName() == null) && (auxMetadata.getOwsName() != null))
+	    	metadata.setOwsName(auxMetadata.getOwsName());
+	   	
+	    if ((metadata.getId() == null) && (auxMetadata.getId() != null))
+	    	metadata.setId(auxMetadata.getId());
 	}
 	
 	
